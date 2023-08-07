@@ -142,7 +142,7 @@ public class Task implements Comparable<Task>, Serializable {
     }
 
     /**
-     * Set whether this task is completed.
+     * Sets whether this task is completed.
      * <p>
      * {@code isCompleted} is also an accessible field.
      * @param isCompleted the value used to set whether this task is completed.

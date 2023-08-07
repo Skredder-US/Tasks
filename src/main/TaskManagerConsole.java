@@ -16,7 +16,7 @@ public class TaskManagerConsole {
 
         Scanner console = new Scanner(System.in);
         String[] commands = {"exit"};
-        String userCommand = getUserCommand(console, commands);
+        getUserCommand(console, commands);
 
         // do something with userCommand
     }
