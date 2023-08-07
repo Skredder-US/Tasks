@@ -167,6 +167,8 @@ public class Task implements Comparable<Task>, Serializable {
      *   <li>{@code dd} is the due date of this task.
      *   <li>{@code ic} is true when this task is completed, false otherwise.
      * </ul>
+     * 
+     * @return a string representation of this task.
      */
     @Override
     public String toString() {

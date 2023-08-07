@@ -7,22 +7,22 @@ import javafx.application.Application;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
-// import javafx.event.ActionEvent;
+import javafx.event.ActionEvent;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.scene.Group;
 import javafx.scene.Scene;
-// import javafx.scene.control.Button;
-// import javafx.scene.control.CheckBox;
+import javafx.scene.control.Button;
+import javafx.scene.control.CheckBox;
 import javafx.scene.control.Label;
 // import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
-// import javafx.scene.control.TextArea;
+import javafx.scene.control.TextArea;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.scene.text.Font;
-// import javafx.stage.Modality;
+import javafx.stage.Modality;
 import javafx.stage.Stage;
 
 /**
@@ -34,18 +34,19 @@ import javafx.stage.Stage;
  * clicking "Is Completed?" then shift clicking "Due Date" will sort by completion then date.
  */
 public class TaskManagerUI extends Application {
-    private static final Font LABEL_FONT = new Font("Arial", 19);
-    private static final double WINDOW_WIDTH = 1280;
-    private static final double WINDOW_HEIGHT = 720;
-    private static final double PADDING = 10;
+    private static final Font HEADER_FONT = new Font("Arial", 19);
+    private static final int WINDOW_WIDTH = 1280;
+    private static final int WINDOW_HEIGHT = 720;
+    private static final int PADDING = 10;
     private static final String TITLE_HEADER = "Title";
     private static final String DESCRIPTION_HEADER = "Description";
     private static final String DUE_DATE_HEADER = "Due Date";
     private static final String IS_COMPLETED_HEADER = "Completed?";
     private static final int TITLE_COLUMN_MAX_WIDTH = 200;
     private static final int DUE_DATE_COLUMN_MAX_WIDTH = 165;
-    // Description column fills the rest of the table width
     private static final int COMPLETE_MAX_WIDTH = 80;
+    private static final int DESCRIPTION_FIELD_WIDTH = WINDOW_WIDTH - PADDING
+            - TITLE_COLUMN_MAX_WIDTH - DUE_DATE_COLUMN_MAX_WIDTH - COMPLETE_MAX_WIDTH;
 
     /**
      * Launches the window, causing the creation and showing of the UI.
@@ -61,18 +62,21 @@ public class TaskManagerUI extends Application {
     public void start(Stage stage) {
         stage.setTitle("Task Manager");
 
+        // Label the table, tasks are here
         final Label label = new Label("Tasks");
-        label.setFont(LABEL_FONT);
+        label.setFont(HEADER_FONT);
         // center label
         label.setMaxWidth(Double.MAX_VALUE);
         label.setAlignment(Pos.CENTER);
 
+        // build the main table
         final TableView<TaskUI> table = new TableView<TaskUI>();
         table.setMinWidth(WINDOW_WIDTH - 2 * PADDING);
         table.setMinHeight(WINDOW_HEIGHT - 80);
         // Columns fill the width of the table
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
 
+        // Add the columns
         List<TableColumn<TaskUI, String>> columns = createColumns();
         table.getColumns().addAll(columns);
 
@@ -84,18 +88,18 @@ public class TaskManagerUI extends Application {
         );
         table.setItems(data);
 
-        // Button addButton = createAddButton(stage, data);
+        // Add button for task creation
+        Button addButton = createAddButton(stage, data);
 
-        final VBox vbox = new VBox();
-        vbox.setSpacing(PADDING / 2);
-        vbox.setPadding(new Insets(PADDING, 0, 0, PADDING));
-        vbox.getChildren().addAll(label, table);
+        // Vertically stack the elements
+        final VBox vBox = new VBox(PADDING / 2, label, table, addButton);
+        vBox.setPadding(new Insets(PADDING, PADDING, 0, PADDING));
         
-        Group root = new Group();
-        root.getChildren().add(vbox);
-        
-        Scene scene = new Scene(root, WINDOW_WIDTH, WINDOW_HEIGHT);
+        // Create event target for user interaction
+        Scene scene = new Scene(vBox, WINDOW_WIDTH, WINDOW_HEIGHT);
         stage.setScene(scene);
+
+        // dispay window
         stage.show();
     }
 
@@ -148,56 +152,135 @@ public class TaskManagerUI extends Application {
         return columns;
     }
 
-    // private static Button createAddButton(Stage mainStage, ObservableList<TaskUI> data) {
-    //     final Button addButton = new Button("Add");
+    /**
+     * Creates an add button triggering a Task creation window upon press. 
+     * <p>
+     * The Task creation window has inputs for title, description, due date, and completed?. 
+     * There must be a title and due date is flexible (no date, only time; no time, only date).
+     * @param ownerStage {@code Stage} this button will be for
+     * @param data The Table's data this button will add to
+     * @return The add button
+     */
+    private static Button createAddButton(Stage ownerStage, ObservableList<TaskUI> data) {
+        // Create an input submition button 
+        final Button addButton = new Button("Add");
 
-    //     addButton.setOnAction((ActionEvent addEvent) -> {
-    //         final Stage stage = new Stage();
-    //         stage.setTitle("Create Task");
-    //         // blocks events from being delivered to any other app window
-    //         stage.initModality(Modality.APPLICATION_MODAL);
-    //         stage.initOwner(mainStage);
+        addButton.setOnAction((ActionEvent addEvent) -> {
+            // Prep the window
+            final Stage stage = new Stage();
+            stage.setTitle("Create Task");
+            stage.initModality(Modality.APPLICATION_MODAL);
+            stage.initOwner(ownerStage);
 
-    //         final Label titleLabel = new Label(TITLE_HEADER);
-    //         titleLabel.setFont(LABEL_FONT);
-    //         final TextArea titleField = new TextArea();
-    //         titleField.setMaxWidth(TITLE_COLUMN_MAX_WIDTH);
-    //         titleField.setPrefHeight(0);
+            // title input
+            final Label titleLabel = new Label(TITLE_HEADER);
+            titleLabel.setFont(HEADER_FONT);
+            final TextArea titleField = new TextArea();
+            titleField.setMaxWidth(TITLE_COLUMN_MAX_WIDTH);
+            titleField.setPrefHeight(0);
 
-    //         final Label descriptionLabel = new Label(DESCRIPTION_HEADER);
-    //         descriptionLabel.setFont(LABEL_FONT);
-    //         final TextArea descriptionField = new TextArea();
-    //         descriptionField.setMaxWidth(800);
+            // description input
+            final Label descriptionLabel = new Label(DESCRIPTION_HEADER);
+            descriptionLabel.setFont(HEADER_FONT);
+            final TextArea descriptionField = new TextArea();
+            descriptionField.setMaxWidth(DESCRIPTION_FIELD_WIDTH);
+            
+            // due date input
+            final Label dueDateLabel = new Label(DUE_DATE_HEADER);
+            dueDateLabel.setFont(HEADER_FONT);
+            final DateTimePicker dueDatePicker = new DateTimePicker(PADDING);
 
-    //         final Label dueDateLabel = new Label(DUE_DATE_HEADER);
-    //         dueDateLabel.setFont(LABEL_FONT);
-    //         final DateTimePicker dateTimePicker = new DateTimePicker();
+            // completed? input
+            final Label isCompletedLabel = new Label(IS_COMPLETED_HEADER);
+            isCompletedLabel.setFont(HEADER_FONT);
+            final CheckBox isCompletedCheckBox = new CheckBox();
 
-    //         final Label isCompletedLabel = new Label(IS_COMPLETED_HEADER);
-    //         isCompletedLabel.setFont(LABEL_FONT);
-    //         final CheckBox checkBox = new CheckBox();
+            // create a Task on button press, prompt for title when empty
+            final Button createButton = new Button("Create");
+            createButton.setOnAction((ActionEvent createEvent) -> {
+                String title = titleField.getText();
 
-    //         final Button createButton = new Button("Create");
-    //         createButton.setOnAction((ActionEvent createEvent) -> {
-    //             data.add(new TaskUI(titleField.getText(), descriptionField.getText(),
-    //                     dateTimePicker.getDateTimeValue().toString(),
-    //                     checkBox.selectedProperty().toString()));
-    //             stage.hide();
-    //         });
+                if (title.trim().isEmpty()) {
+                    promptForTitle(stage);
+                    titleField.requestFocus();
+                    titleField.setText("");
+                } else {
+                    String description = descriptionField.getText();
+                    String dueDate = dueDatePicker.toString();
 
-    //         VBox vbox = new VBox(20);
-    //         vbox.setSpacing(PADDING / 2);
-    //         vbox.setPadding(new Insets(PADDING, PADDING, 0, PADDING));
-    //         vbox.getChildren().addAll(titleLabel, titleField, descriptionLabel, descriptionField,
-    //                 dueDateLabel, dateTimePicker, isCompletedLabel, checkBox, createButton);
+                    String isCompleted;
+                    if (isCompletedCheckBox.isSelected()) {
+                        isCompleted = "completed";
+                    } else {
+                        isCompleted = "no";
+                    }
+                    
+                    data.add(new TaskUI(title, description, dueDate, isCompleted));
+                    stage.hide();
+                }
+            });
 
-    //         Scene dialogScene = new Scene(vbox, 810, 455);
-    //         stage.setScene(dialogScene);
-    //         stage.show();
-    //     });
+            // A way to back out for the user
+            Button cancelButton = new Button("Cancel");
+            cancelButton.setOnAction((ActionEvent cancelEvent) -> {
+                stage.hide();
+            });
 
-    //     return addButton;
-    // }
+            // Button row, "Create" next to "Cancel"
+            HBox buttonsHBox = new HBox(PADDING / 2, createButton, cancelButton);
+            buttonsHBox.setPadding(new Insets(2 * PADDING, 0, 0, 0));
+
+            // Vertically stack the inputs and button row
+            VBox vBox = new VBox(PADDING / 2, titleLabel, titleField, descriptionLabel,
+                    descriptionField, dueDateLabel, dueDatePicker, isCompletedLabel,
+                    isCompletedCheckBox, buttonsHBox);
+            vBox.setPadding(new Insets(0, 0, 0, PADDING));
+
+            // Create event target for user interactions
+            int width = DESCRIPTION_FIELD_WIDTH + PADDING;
+            Scene dialogScene = new Scene(vBox, width, width / 16 * 9);
+            stage.setScene(dialogScene);
+
+            // display window
+            stage.show();
+        });
+
+        return addButton;
+    }
+
+    /**
+     * A small window requesting the user enter the title of the Task. 
+     * @param ownerStage {@code Stage} from where this window was triggered.
+     */
+    private static void promptForTitle(Stage ownerStage) {
+        // Prep window
+        Stage alertStage = new Stage();
+        alertStage.setTitle("Invalid");
+        alertStage.initModality(Modality.APPLICATION_MODAL);
+        alertStage.initOwner(ownerStage);
+
+        // Label explaining to user
+        final Label alertLabel = new Label("Please enter a title.");
+        alertLabel.setFont(HEADER_FONT);
+
+        // Button to exit
+        final Button okayButton = new Button("Okay");
+        okayButton.setOnAction((ActionEvent createEvent) -> {
+            alertStage.hide();
+        });
+
+        // Vertically stack the components and center
+        VBox vBox = new VBox(30, alertLabel, okayButton);
+        vBox.setAlignment(Pos.CENTER);
+        vBox.setPadding(new Insets(40, 0, 0, 0));
+
+        // Create event target for user interaction
+        Scene dialogScene = new Scene(vBox, 220, 150);
+        alertStage.setScene(dialogScene);
+        
+        // display window
+        alertStage.show();
+    }
 
     /**
      * Stores and provides accessors for the data of a Task. Task data is made up of title, 
