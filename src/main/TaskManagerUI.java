@@ -1,6 +1,8 @@
 package main;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 import javafx.application.Application;
@@ -47,6 +49,7 @@ public class TaskManagerUI extends Application {
     private static final int COMPLETE_MAX_WIDTH = 80;
     private static final int DESCRIPTION_FIELD_WIDTH = WINDOW_WIDTH - PADDING
             - TITLE_COLUMN_MAX_WIDTH - DUE_DATE_COLUMN_MAX_WIDTH - COMPLETE_MAX_WIDTH;
+    private static final int DATE_LENGTH = LocalDate.now().toString().length();
 
     /**
      * Launches the window, causing the creation and showing of the UI.
@@ -110,19 +113,46 @@ public class TaskManagerUI extends Application {
     private static List<TableColumn<TaskUI, String>> createColumns() {
         List<TableColumn<TaskUI, String>> columns = new ArrayList<TableColumn<TaskUI, String>>();
 
+        // Title
         TableColumn<TaskUI, String> titleColumn = new TableColumn<TaskUI, String>(TITLE_HEADER);
         titleColumn.setCellValueFactory(new PropertyValueFactory<>("title"));
         titleColumn.setMaxWidth(TITLE_COLUMN_MAX_WIDTH);
         columns.add(titleColumn);
 
+        // Description
         TableColumn<TaskUI, String> descriptionColumn = 
                 new TableColumn<TaskUI, String>(DESCRIPTION_HEADER);
         descriptionColumn.setCellValueFactory(new PropertyValueFactory<>("description"));
         columns.add(descriptionColumn);
 
+        // Due Date
         TableColumn<TaskUI, String> dueDateColumn =
                 new TableColumn<TaskUI, String>(DUE_DATE_HEADER);
         dueDateColumn.setCellValueFactory(new PropertyValueFactory<>("dueDate"));
+        // Sort chronologically
+        dueDateColumn.setComparator(new Comparator<String>() {
+            @Override
+            public int compare(String dateTime1, String dateTime2) {
+                // Test for converting 12 to 24 hours
+                // String date = "2023-08-08";
+                // for (int i = 1; i <= 12; i++) {
+                //     String dateTime = date + " " + i + ":00 AM";
+                //     dateTime = convert12To24Hour(dateTime);
+                //     System.out.println(dateTime);
+                // }
+                // for (int i = 1; i <= 12; i++) {
+                //     String dateTime = date + " " + i + ":00 PM";
+                //     dateTime = convert12To24Hour(dateTime);
+                //     System.out.println(dateTime);
+                // }
+                
+                // Techincally sorts alphabetically but coverting to 24 hour time makes 
+                // it the same order as chronologically!
+                dateTime1 = convert12To24Hour(dateTime1);
+                dateTime2 = convert12To24Hour(dateTime2);
+                return dateTime1.compareTo(dateTime2);
+            }
+        });
         // dueDateColumn.setCellFactory(column -> {
         //     TableCell<TaskUI, String> cell = new TableCell<TaskUI, String>() {
         //         @Override
@@ -143,6 +173,7 @@ public class TaskManagerUI extends Application {
         dueDateColumn.setMaxWidth(DUE_DATE_COLUMN_MAX_WIDTH);
         columns.add(dueDateColumn);
 
+        // Complete?
         TableColumn<TaskUI, String> completeColumn =
                 new TableColumn<TaskUI, String>(IS_COMPLETED_HEADER);
         completeColumn.setCellValueFactory(new PropertyValueFactory<>("isCompleted"));
@@ -150,6 +181,48 @@ public class TaskManagerUI extends Application {
         columns.add(completeColumn);
 
         return columns;
+    }
+    
+    /**
+     * Converts and returns specified date and time {@code String} from 12 hour to 24 hour time.
+     * <p>
+     * Assumptions:
+     * <ul>
+     *   <li>Specified time is 12 hour in the form: "hour:minutes AM/PM" 
+     * (e.g. 12:00 AM and 1:00 PM). 
+     *   <li>Specified date is in same form as {@code LocalDate#toString()}
+     * @param dateTime {@code String} containing a date and 12 hour time in specified formats.
+     * @return {@code String} of specified date and time but now with 24 hour time.
+     * @see java.time.LocalDate
+     */
+    private static String convert12To24Hour(String dateTime) {
+        int colonIndex = dateTime.indexOf(":");
+
+        if (colonIndex != -1) {
+            // has time
+            String hour12 = dateTime.substring(DATE_LENGTH, colonIndex).trim();
+            int hour = Integer.parseInt(hour12);
+            
+            // convert to 24 hour
+            if (hour == 12 && dateTime.contains("AM")) {
+                hour = 0;
+            } else if (hour != 12 && dateTime.contains("PM")) {
+                hour += 12;
+            }
+
+            // add leading zeros
+            String hour24 = Integer.toString(hour);
+            if (hour < 10) {
+                hour24 = "0" + hour24;
+            }
+            
+            // convert
+            dateTime = dateTime.substring(0, DATE_LENGTH) + // keep date the same
+                    dateTime.substring(DATE_LENGTH, dateTime.length() - 3) // remove AM/PM
+                    .replace(hour12, hour24); // don't change numbers in date
+        }
+
+        return dateTime;
     }
 
     /**
@@ -234,7 +307,7 @@ public class TaskManagerUI extends Application {
             VBox vBox = new VBox(PADDING / 2, titleLabel, titleField, descriptionLabel,
                     descriptionField, dueDateLabel, dueDatePicker, isCompletedLabel,
                     isCompletedCheckBox, buttonsHBox);
-            vBox.setPadding(new Insets(0, 0, 0, PADDING));
+            vBox.setPadding(new Insets(0, PADDING, 0, PADDING));
 
             // Create event target for user interactions
             int width = DESCRIPTION_FIELD_WIDTH + PADDING;

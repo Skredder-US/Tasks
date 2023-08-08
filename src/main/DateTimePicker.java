@@ -34,6 +34,7 @@ public class DateTimePicker extends HBox {
         // Selects hour
         hourPicker = new ChoiceBox<String>();
         ObservableList<String> hours = hourPicker.getItems();
+        hours.add("");
         for (int i = 1; i <= 12; i++) {
             hours.add(Integer.toString(i));
         }
@@ -41,6 +42,7 @@ public class DateTimePicker extends HBox {
         // Selects minutes in increments of 5.
         minutesPicker = new ChoiceBox<String>();
         ObservableList<String> minutes = minutesPicker.getItems();
+        minutes.add("");
         for (int i = 0; i <= 55; i += 5) {
             String minuteAsString = "";
             // handle :00 and :05
@@ -54,7 +56,7 @@ public class DateTimePicker extends HBox {
 
         // Selects AM or PM
         amPmPicker = new ChoiceBox<String>();
-        amPmPicker.getItems().addAll("AM", "PM");
+        amPmPicker.getItems().addAll("", "AM", "PM");
 
         // Horizontally stack the controls
         setSpacing(padding / 2);
@@ -63,55 +65,33 @@ public class DateTimePicker extends HBox {
     }
 
     /**
-     * Returns a {@code String} representing the user's selection of date and/or time.
+     * Returns a {@code String} representing the user's selection of date and time.
      * <p>
-     * Of the form: (date) (hour):(minutes) (AM or PM). With the corresponding values in place. 
+     * Of the form: (date) (hour):(minutes) (AM or PM), with the corresponding values in place. 
      * <p>
-     * Unset data will be blank.
+     * Date and/or time can be unset.
      * 
-     * @return a string representation of this selected date and/or time.
+     * @return a string representation of this selected date and time.
      */
     @Override
     public String toString() {
-        // dueDate or empty on null
         LocalDate date = datePicker.getValue();
-        String dateString;
-        if (date == null) {
-            dateString = "";
-        } else {
-            dateString = date.toString();
-        }
-        
-        // hour or empty on null
         String hour = hourPicker.getValue();
-        if (hour == null) {
-            hour = "";
+        String minutes = minutesPicker.getValue();
+        String amPm = amPmPicker.getValue();
+
+        if (date == null) {
+            if (hour == null || minutes == null || amPm == null) {
+                return ""; // no data
+            } 
+
+            date = LocalDate.now(); // only time
+        } else if (hour == null || minutes == null || amPm == null) {
+            return date.toString(); // only date
         }
         
-        // minutes or empty on null
-        String minutes = minutesPicker.getValue();
-        if (minutes == null) {
-            minutes = "";
-        }
-                    
-        // AM or PM or empty on null
-        String amPm = amPmPicker.getValue();
-        if (amPm == null) {
-            amPm = "";
-        }
-
-        // formatting 
-        String result = dateString + " " + hour;
-        if (!hour.isEmpty()) {
-            result += ":";
-
-            if (minutes.isEmpty()) {
-                result += "00";
-            }
-        }
-        result += minutes + " " + amPm;
-
-        // done
-        return result.trim();
+        // return date and time
+        return date.toString() + " " + hour + ":" + minutes + " " + amPm;
+        
     }
 }
