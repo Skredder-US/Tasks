@@ -1,6 +1,7 @@
 package main;
 
 import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
@@ -67,7 +68,7 @@ public class DateTimePicker extends HBox {
     /**
      * Returns a {@code String} representing the user's selection of date and time.
      * <p>
-     * Of the form: (date) (hour):(minutes) (AM or PM), with the corresponding values in place. 
+     * Of the form: {@code (date) (hour):(minutes) (AM or PM)}, with the corresponding values in place. 
      * <p>
      * Date and/or time can be unset.
      * 
@@ -80,18 +81,50 @@ public class DateTimePicker extends HBox {
         String minutes = minutesPicker.getValue();
         String amPm = amPmPicker.getValue();
 
+        boolean hasNoTime = hour == null || minutes == null || amPm == null ||
+                hour.isEmpty() || minutes.isEmpty() || amPm.isEmpty();
+
         if (date == null) {
-            if (hour == null || minutes == null || amPm == null) {
+            if (hasNoTime) {
                 return ""; // no data
-            } 
+            }
 
             date = LocalDate.now(); // only time
-        } else if (hour == null || minutes == null || amPm == null) {
+        } else if (hasNoTime) {
             return date.toString(); // only date
         }
         
         // return date and time
         return date.toString() + " " + hour + ":" + minutes + " " + amPm;
+    }
+
+    /**
+     * Sets the date of this {@code DateTimePicker} from a text string such as {@code 2023-08-09}.
+     * <p>
+     * Specified {@code String} must represent a valid date and is parsed using 
+     * {@link java.time.format.DateTimeFormatter#ISO_LOCAL_DATE}.
+     * 
+     * @param date the text to parse such as "2023-08-09", not null
+     * @throws DateTimeParseException if the text cannot be parsed
+     */
+    public void setDate(String date) {
+        datePicker.setValue(LocalDate.parse(date));
+    }
+
+    /**
+     * Sets the time of this {@code DateTimePicker} from a text string such as {@code 9:57 AM}.
+     * <p>
+     * Specified {@code String} must be in the format: 
+     * {@code (hour):(minutes) (AM or PM)}, with the corresponding values in place.
+     * 
+     * @param time the text to parse such as "9:57 AM", not null
+     */
+    public void setTime(String time) {
+        int colonIndex = time.indexOf(":");
+        int spaceIndex = time.indexOf(" ");
         
+        hourPicker.setValue(time.substring(0, colonIndex));
+        minutesPicker.setValue(time.substring(colonIndex + 1, spaceIndex));
+        amPmPicker.setValue(time.substring(spaceIndex + 1, time.length()));
     }
 }
