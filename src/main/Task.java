@@ -1,7 +1,7 @@
 package main;
 
 import java.io.Serializable;
-import java.util.Calendar;
+import java.time.LocalDate;
 
 /**
  * The {@code Task} class represents a single task, e.g. for a todo list. 
@@ -16,23 +16,26 @@ import java.util.Calendar;
  * 
  * Tasks have the following rules:
  * <ul>
- *   <li>Tasks cannot store null data.</li>
+ *   <li>Tasks cannot store null titles or description.</li>
  *   <li>The title cannot be empty.</li>
  * </ul>
  * Attempting either of these will throw an exception.
  * <p>
  * {@code Task} objects have getters and setter but whether the task is completed is also a field.
  */
-public class Task implements Comparable<Task>, Serializable {
+public class Task implements Serializable {
     private static final String NULL_ERROR_MESSAGE = 
-            "Tasks cannot store null data.";
+            "Tasks cannot store null titles or description.";
     private static final String EMPTY_TITLE_ERROR_MESSAGE = 
-            "Title cannot be empty.";
+            "Title cannot be blank.";
 
     private String title;
     private String description;
-    private Calendar dueDate;
-    
+
+    /**
+     * The due date of this task.
+     */
+    public LocalDate dueDate; 
     /**
      * Indicates whether this task is completed.
      */
@@ -47,13 +50,12 @@ public class Task implements Comparable<Task>, Serializable {
      * @param dueDate when the task is due.
      * @param isCompleted whether the task is completed.
      * 
-     * @throws IllegalArgumentException if any parameter is null or if the specified title 
-     * {@code String} is empty.
+     * @throws IllegalArgumentException if title or description are null or if title is blank.
      */
-    public Task(String title, String description, Calendar dueDate, boolean isCompleted) {
-        if (title == null || description == null || dueDate == null) {
+    public Task(String title, String description, LocalDate dueDate, boolean isCompleted) {
+        if (title == null || description == null) {
             throw new IllegalArgumentException(NULL_ERROR_MESSAGE);
-        } else if (title.isEmpty()) {
+        } else if (title.isBlank()) {
             throw new IllegalArgumentException(EMPTY_TITLE_ERROR_MESSAGE);
         }
 
@@ -81,9 +83,11 @@ public class Task implements Comparable<Task>, Serializable {
 
     /**
      * Gets the due date of this task.
-     * @return A Calendar representing the due date of this task.
+     * <p>
+    * {@code dueDate} is also an accessible field.
+     * @return A LocalDate representing the due date of this task.
      */
-    public Calendar getDueDate() {
+    public LocalDate getDueDate() {
         return dueDate;
     }
 
@@ -129,15 +133,9 @@ public class Task implements Comparable<Task>, Serializable {
 
     /**
      * Sets the due date of this task.
-     * @param title The Calendar used to set the due date.
-     * 
-     * @throws IllegalArgumentException if the specified {@code Calendar} is null.
+     * @param dueDate The Calendar used to set the due date.
      */
-    public void setDueDate(Calendar dueDate) {
-        if (dueDate == null) {
-            throw new IllegalArgumentException(NULL_ERROR_MESSAGE);
-        }
-
+    public void setDueDate(LocalDate dueDate) {
         this.dueDate = dueDate;
     }
 
@@ -149,51 +147,5 @@ public class Task implements Comparable<Task>, Serializable {
      */
     public void setIsCompleted(boolean isCompleted) {
         this.isCompleted = isCompleted;
-    }
-
-    /**
-     * Converts this {@code Task} object into a {@code String} of the form:
-     * <p>
-     * {@snippet :
-     * Title: t
-     * Description: d
-     * Due Date: dd
-     * Is Completed: ic
-     * }
-     * Where:
-     * <ul>
-     *   <li>{@code t} is the title of this task.
-     *   <li>{@code d} is the description of this task.
-     *   <li>{@code dd} is the due date of this task.
-     *   <li>{@code ic} is true when this task is completed, false otherwise.
-     * </ul>
-     * 
-     * @return a string representation of this task.
-     */
-    @Override
-    public String toString() {
-        return "Title: " + title + 
-                "\nDescription: " + description + 
-                "\nDue Date: " + dueDate.getTime() + 
-                "\nIs Completed: " + isCompleted + "\n";
-    }
-
-    /**
-     * Compares the due dates of the two {@code Task} objects. When both due dates are equal,
-     * compares their titles lexicographically. 
-     * @param anotherTask the {@code Task} to be compared
-     * @return the value 0 if the due dates and titles are equal; a value less than 0 if the due 
-     * date of this {@code Task} is before the argument's or if the due dates are equal and the 
-     * title is lexicographically less than the argument's; and a value greater than 0 if the due 
-     * date of this {@code Task} is after the due date the argument's or if the due dates are equal  
-     * and the title is lexicographically greater than the argument's.
-     */
-    @Override
-    public int compareTo(Task anotherTask) {
-        int dueDateComparison = dueDate.compareTo(anotherTask.dueDate);
-        if (dueDateComparison == 0) {
-            return title.compareTo(anotherTask.title);
-        }
-        return dueDateComparison;
     }
 }
