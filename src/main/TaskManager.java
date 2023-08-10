@@ -98,11 +98,17 @@ public class TaskManager extends Application {
         List<TableColumn<TaskUI, String>> columns = createColumns(stage, data);
         table.getColumns().addAll(columns);
 
-        // Add button for TaskUI creation
+        // Add button for Task creation
         Button addButton = createAddButton(stage, data);
 
+        // Add button for Task deletion
+        Button deleteButton = createDeleteButton(table);
+
+        // Button row, "Accept" next to "Cancel"
+        HBox buttonsHBox = new HBox(PADDING, addButton, deleteButton);
+
         // Vertically stack the elements
-        final VBox vBox = new VBox(PADDING, label, table, addButton);
+        final VBox vBox = new VBox(PADDING, label, table, buttonsHBox);
         vBox.setPadding(new Insets(PADDING));
         
         // Container enabling user interactions
@@ -269,6 +275,20 @@ public class TaskManager extends Application {
         });
 
         return addButton;
+    }
+
+    private static Button createDeleteButton(TableView<TaskUI> table) {
+        final Button button = new Button("Delete");
+
+        button.setOnAction((ActionEvent event) -> {
+            int i = table.getSelectionModel().getSelectedIndex();
+
+            if (i != -1) {
+                table.getItems().remove(i);
+            }
+        });
+
+        return button;
     }
 
     /**
