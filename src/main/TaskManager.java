@@ -1,5 +1,13 @@
 package main;
 
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
+import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
@@ -33,14 +41,18 @@ import javafx.util.Callback;
 import javafx.util.StringConverter;
 
 /**
- * A simple graphical user interface (GUI) to interact with {@code TaskUIManager}. 
+ * A simple task management application that allows users to add, update, and track tasks.  
  * <p>
- * {@code TaskUIManagerUI} includes a sortable TaskUI list displaying all TaskUIs with their details 
+ * {@code TaskManager} includes a sortable task list displaying all tasks with their details 
  * (title, description, due date, and whether it's completed). Click the column header to sort
  * alphabetically, click again for more options. Shift clicking sets secondary sorting, e.g. 
  * clicking "Is Completed?" then shift clicking "Due Date" will sort by completion then date.
+ * <p>
+ * Tasks can be created, edited, and deleted. Double click a cell to edit it! Create and delete
+ * are buttons. Select a row then press delete to delete that task.
  */
 public class TaskManager extends Application {
+    private static final String SAVE_FILENAME = "Tasks.ser";
     private static final Font HEADER_FONT = new Font("Arial", 19);
     private static final int TABLE_WIDTH = 1280;
     private static final int TABLE_HEIGHT = 720;
@@ -58,48 +70,48 @@ public class TaskManager extends Application {
     private static final String DUE_DATE_ERROR_MESSAGE = 
             "Please use the form:\nmonth/day/year\n.e.g. 8/10/2023";
 
+    private ObservableList<TaskUI> tasks;
+
     /**
-     * Launches the window, causing the creation and showing of the UI.
+     * Launches the application, causing the creation and showing of the application.
      */
     public static void main(String[] args) {
         launch(args);
     }
 
     /**
-     * Creates and shows the UI, causing it to appear on the screen to be used.
+     * Creates and shows the application, causing it to appear on the screen to be used.
+     * 
+     * @param primaryStage the primary stage for this application. See super for more info.
      */ 
     @Override
-    public void start(Stage stage) {
-        stage.setTitle("Task Manager");
+    public void start(Stage primaryStage) {
+        primaryStage.setTitle("Task Manager");
 
-        // Label the table, TaskUIs are here
-        final Label label = new Label("Tasks");
+        // Label the table, tasks are here
+        Label label = new Label("Tasks");
         label.setFont(HEADER_FONT);
         // center label
         label.setMaxWidth(Double.MAX_VALUE);
         label.setAlignment(Pos.CENTER);
 
         // build the main table
-        final TableView<TaskUI> table = new TableView<TaskUI>();
+        TableView<TaskUI> table = new TableView<TaskUI>();
         table.setPrefWidth(TABLE_WIDTH);
         table.setPrefHeight(TABLE_HEIGHT);
         // Columns fill the width of the table
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
 
-        // dummy example data
-        ObservableList<TaskUI> data = FXCollections.observableArrayList(
-            new TaskUI("b", "b", null, false),
-            new TaskUI("a", "a", null, false),
-            new TaskUI("c", "c", null, true)
-        );
-        table.setItems(data);
+        // load saved tasks
+        loadSavedTasks(); // loads to tasks field
+        table.setItems(tasks);
 
         // Add the table columns
-        List<TableColumn<TaskUI, String>> columns = createColumns(stage, data);
+        List<TableColumn<TaskUI, String>> columns = createColumns(primaryStage);
         table.getColumns().addAll(columns);
 
         // Add button for Task creation
-        Button addButton = createAddButton(stage, data);
+        Button addButton = createAddButton(primaryStage);
 
         // Add button for Task deletion
         Button deleteButton = createDeleteButton(table);
@@ -108,29 +120,71 @@ public class TaskManager extends Application {
         HBox buttonsHBox = new HBox(PADDING, addButton, deleteButton);
 
         // Vertically stack the elements
-        final VBox vBox = new VBox(PADDING, label, table, buttonsHBox);
+        VBox vBox = new VBox(PADDING, label, table, buttonsHBox);
         vBox.setPadding(new Insets(PADDING));
         
         // Container enabling user interactions
         Scene scene = new Scene(vBox);
-        stage.setScene(scene);
+        primaryStage.setScene(scene);
 
         // display window
-        stage.show();
+        primaryStage.show();
     }
 
     /**
-     * Returns a List of all the columns in the table of TaskUIs. Columns are title, description, 
-     * due date, and completed?. Columns can be edited by double clicking.
+     * Saves current state of tasks to a serialization file.
+     */
+    @Override
+    public void stop() {
+        // Serialization
+        try {  
+            FileOutputStream file = new FileOutputStream(SAVE_FILENAME);
+            ObjectOutputStream out = new ObjectOutputStream(file);
+             
+            out.writeObject(new ArrayList<TaskUI>(tasks));
+             
+            out.close();
+            file.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Initializes and populates the list of tasks from the save file. No save file results
+     * in an empty list!
+     */
+    @SuppressWarnings("unchecked")
+    private void loadSavedTasks() {
+        tasks = FXCollections.observableArrayList();
+
+        try {
+            InputStream in = Files.newInputStream(Path.of(SAVE_FILENAME));
+            ObjectInputStream ois = new ObjectInputStream(in);
+
+            List<TaskUI> list = (List<TaskUI>) ois.readObject();
+
+            tasks.addAll(list);
+        } catch (NoSuchFileException e) {
+            // continue without loading tasks because there were none to load.
+        } catch (ClassNotFoundException | IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Returns a List of all the columns in the table of tasks. Columns are title, description, 
+     * due date, and completed?. Columns can be edited by double clicking. Due date column sorts
+     * chronologically while the others sort alphabetically.
      */ 
-    private static List<TableColumn<TaskUI, String>> createColumns(Stage ownerStage, 
-            ObservableList<TaskUI> data) {
+    private List<TableColumn<TaskUI, String>> createColumns(Stage ownerStage) {
         List<TableColumn<TaskUI, String>> columns = new ArrayList<TableColumn<TaskUI, String>>();
 
         // Title
-        TableColumn<TaskUI, String> titleColumn = new TableColumn<TaskUI, String>(TITLE_HEADER);
+        TableColumn<TaskUI, String> titleColumn = 
+                new TableColumn<TaskUI, String>(TITLE_HEADER);
         titleColumn.setCellValueFactory(new PropertyValueFactory<>("title"));
-        titleColumn.setCellFactory(new TaskCellFactory(ownerStage, data));
+        titleColumn.setCellFactory(new TaskCellFactory(ownerStage));
         titleColumn.setMaxWidth(TITLE_COLUMN_MAX_WIDTH);
         columns.add(titleColumn);
 
@@ -138,7 +192,7 @@ public class TaskManager extends Application {
         TableColumn<TaskUI, String> descriptionColumn = 
                 new TableColumn<TaskUI, String>(DESCRIPTION_HEADER);
         descriptionColumn.setCellValueFactory(new PropertyValueFactory<>("description"));
-        descriptionColumn.setCellFactory(new TaskCellFactory(ownerStage, data));
+        descriptionColumn.setCellFactory(new TaskCellFactory(ownerStage));
         // width = as big as it can be
         columns.add(descriptionColumn);
 
@@ -146,7 +200,7 @@ public class TaskManager extends Application {
         TableColumn<TaskUI, String> dueDateColumn =
                 new TableColumn<TaskUI, String>(DUE_DATE_HEADER);
         dueDateColumn.setCellValueFactory(new PropertyValueFactory<>("dueDateAsString"));
-        dueDateColumn.setCellFactory(new TaskCellFactory(ownerStage, data));
+        dueDateColumn.setCellFactory(new TaskCellFactory(ownerStage));
         // Sort chronologically
         dueDateColumn.setComparator(new Comparator<String>() {
             private static final DueDateConverter converter = new DueDateConverter();
@@ -173,7 +227,7 @@ public class TaskManager extends Application {
         TableColumn<TaskUI, String> completeColumn =
                 new TableColumn<TaskUI, String>(IS_COMPLETED_HEADER);
         completeColumn.setCellValueFactory(new PropertyValueFactory<>("isCompletedAsString"));
-        completeColumn.setCellFactory(new TaskCellFactory(ownerStage, data));
+        completeColumn.setCellFactory(new TaskCellFactory(ownerStage));
         completeColumn.setMaxWidth(COMPLETE_MAX_WIDTH);
         columns.add(completeColumn);
 
@@ -186,47 +240,46 @@ public class TaskManager extends Application {
      * The TaskUI creation window has inputs for title, description, due date, and completed?. 
      * There must be a title and due date is flexible (no date, only time; no time, only date).
      * @param ownerStage {@code Stage} this button will be for
-     * @param data The Table's data this button will add to
      * @return The add button
      */
-    private static Button createAddButton(Stage ownerStage, ObservableList<TaskUI> data) {
+    private Button createAddButton(Stage ownerStage) {
         // Create an input submition button 
-        final Button addButton = new Button("Add");
+        Button addButton = new Button("Add");
 
         addButton.setOnAction((ActionEvent addEvent) -> {
             // Prep the window
-            final Stage stage = new Stage();
+            Stage stage = new Stage();
             stage.setTitle("Create Task");
             stage.initModality(Modality.APPLICATION_MODAL);
             stage.initOwner(ownerStage);
 
             // title input
-            final Label titleLabel = new Label(TITLE_HEADER);
+            Label titleLabel = new Label(TITLE_HEADER);
             titleLabel.setFont(HEADER_FONT);
-            final TextArea titleField = new TextArea();
+            TextArea titleField = new TextArea();
             titleField.setMaxWidth(TITLE_COLUMN_MAX_WIDTH);
             titleField.setPrefHeight(0);
 
             // description input
-            final Label descriptionLabel = new Label(DESCRIPTION_HEADER);
+            Label descriptionLabel = new Label(DESCRIPTION_HEADER);
             descriptionLabel.setFont(HEADER_FONT);
-            final TextArea descriptionField = new TextArea();
+            TextArea descriptionField = new TextArea();
             descriptionField.setPrefWidth(DESCRIPTION_FIELD_WIDTH);
             
             // due date input
-            final Label dueDateLabel = new Label(DUE_DATE_HEADER);
+            Label dueDateLabel = new Label(DUE_DATE_HEADER);
             dueDateLabel.setFont(HEADER_FONT);
-            final DatePicker datePicker = new DatePicker();
+            DatePicker datePicker = new DatePicker();
             DueDateConverter converter = new DueDateConverter();
             datePicker.setConverter(converter);
 
             // completed? input
-            final Label isCompletedLabel = new Label(IS_COMPLETED_HEADER);
+            Label isCompletedLabel = new Label(IS_COMPLETED_HEADER);
             isCompletedLabel.setFont(HEADER_FONT);
-            final CheckBox isCompletedCheckBox = new CheckBox();
+            CheckBox isCompletedCheckBox = new CheckBox();
 
             // create a TaskUI on button press, prompt for title when empty
-            final Button createButton = new Button("Create");
+            Button createButton = new Button("Create");
             createButton.setOnAction((ActionEvent createEvent) -> {
                 String title = titleField.getText();
 
@@ -234,19 +287,19 @@ public class TaskManager extends Application {
                     displayError(stage, TITLE_ERROR_MESSAGE);
 
                     titleField.requestFocus();
-                } else if (converter.getStatus() == DueDateConverter.STATUS.SUCCESS) {
-                    String description = descriptionField.getText();
-                    LocalDate dueDate = datePicker.getValue();
-                    boolean isCompleted = isCompletedCheckBox.isSelected();
-                    
-                    data.add(new TaskUI(title, description, dueDate, isCompleted));
-
-                    stage.hide();
-                } else {
+                } else if (converter.parseFailed) {
                     displayError(stage, DUE_DATE_ERROR_MESSAGE);
                     
                     datePicker.requestFocus();
                     datePicker.getEditor().selectAll();
+                } else {
+                    String description = descriptionField.getText();
+                    LocalDate dueDate = datePicker.getValue();
+                    boolean isCompleted = isCompletedCheckBox.isSelected();
+                    
+                    tasks.add(new TaskUI(title, description, dueDate, isCompleted));
+
+                    stage.hide();
                 }
             });
 
@@ -278,7 +331,7 @@ public class TaskManager extends Application {
     }
 
     private static Button createDeleteButton(TableView<TaskUI> table) {
-        final Button button = new Button("Delete");
+        Button button = new Button("Delete");
 
         button.setOnAction((ActionEvent event) -> {
             int i = table.getSelectionModel().getSelectedIndex();
@@ -306,12 +359,12 @@ public class TaskManager extends Application {
         stage.initOwner(ownerStage);
 
         // Label explaining to user
-        final Label label = new Label(text);
-        label.setFont(new Font("Arial", 19));
+        Label label = new Label(text);
+        label.setFont(HEADER_FONT);
         label.setTextAlignment(TextAlignment.CENTER);
 
         // Button to exit
-        final Button button = new Button("Okay");
+        Button button = new Button("Okay");
         button.setOnAction((ActionEvent createEvent) -> {
             stage.hide();
         });
@@ -396,26 +449,23 @@ public class TaskManager extends Application {
     }
 
     /**
-     * {@code TaskUICellFactory} handles creation of each cell in the title, description, due date, 
+     * {@code TaskCellFactory} handles creation of each cell in the title, description, due date, 
      * and completed? columns.
      * <p>
      * Each cell will display it's data and double clicking a cell will trigger it's editing 
      * (though completed? columns will simply mark completed or not).
      */
-    private static class TaskCellFactory implements 
+    private class TaskCellFactory implements 
             Callback<TableColumn<TaskUI, String>, TableCell<TaskUI, String>> {
         private Stage ownerStage;
-        private ObservableList<TaskUI> data;
         
         /**
-         * Initializes a newly created {@code TaskUICellFactory} object so it may create cells for
-         * a table in the specified {@code Stage} with the specified data.
+         * Initializes a newly created {@code TaskCellFactory} object so it may create cells for
+         * a table in the specified {@code Stage}.
          * @param ownerStage {@code Stage} containing the table with the cells to create.
-         * @param data table data for the table with the cells to create.
          */
-        private TaskCellFactory(Stage ownerStage, ObservableList<TaskUI> data) {
+        private TaskCellFactory(Stage ownerStage) {
             this.ownerStage = ownerStage;
-            this.data = data;
         }
 
         /**
@@ -464,26 +514,28 @@ public class TaskManager extends Application {
                         }
 
                         // Set cell to be the opposite value
-                        data.get(cell.getIndex()).setIsCompleted(opposite == TaskUI.COMPLETED);
+                        tasks.get(
+                                cell.getIndex()).setIsCompleted(opposite.equals(TaskUI.COMPLETED));
                         cell.setText(opposite);
                     } else {
                         // Prep the edit window
-                        Stage inputStage = new Stage();
-                        inputStage.setTitle("Edit " + columnName);
-                        inputStage.initModality(Modality.APPLICATION_MODAL);
-                        inputStage.initOwner(ownerStage);   
+                        Stage stage = new Stage();
+                        stage.setTitle("Edit " + columnName);
+                        stage.initModality(Modality.APPLICATION_MODAL);
+                        stage.initOwner(ownerStage);   
 
                         // edit window will have inputs and buttons
                         VBox inputVBox = new VBox(PADDING);
+                        Label label = new Label();
+                        label.setFont(HEADER_FONT);
                         Button acceptButton = new Button("Accept");
 
                         if (columnName.equals(TITLE_HEADER)) {
                             // Edit title 
-                            final Label label = new Label(TITLE_HEADER);
-                            label.setFont(HEADER_FONT);
+                            label.setText(TITLE_HEADER);
 
                             // Input for new title
-                            final TextArea textArea = new TextArea();
+                            TextArea textArea = new TextArea();
                             textArea.setMaxWidth(TITLE_COLUMN_MAX_WIDTH);
                             textArea.setPrefHeight(0);
 
@@ -491,77 +543,76 @@ public class TaskManager extends Application {
                             textArea.setText(cell.getText());
                             textArea.selectAll();
 
-                            // Update data and table on press, ensuring non-empty
+                            // Update tasks and cell on press, ensuring non-empty
                             acceptButton.setOnAction((ActionEvent acceptEvent) -> {
                                 String newTitle = textArea.getText();
 
-                                if (newTitle.trim().isEmpty()) {
+                                if (newTitle.isBlank()) {
                                     // Must enter a non-empty title
-                                    displayError(inputStage, TITLE_ERROR_MESSAGE);
+                                    displayError(stage, TITLE_ERROR_MESSAGE);
 
                                     textArea.requestFocus();
+                                    textArea.selectAll();
                                 } else {
                                     // Update
-                                    data.get(cell.getIndex()).setTitle(newTitle);
+                                    tasks.get(cell.getIndex()).setTitle(newTitle);
                                     cell.setText(newTitle);
 
-                                    inputStage.hide();
+                                    stage.hide();
                                 }
                             });
 
                             inputVBox.getChildren().addAll(label, textArea);
                         } else if (columnName.equals(DESCRIPTION_HEADER)) {
                             // Edit description
-                            final Label label = new Label(DESCRIPTION_HEADER);
-                            label.setFont(HEADER_FONT);
+                            label.setText(DESCRIPTION_HEADER);
 
                             // Input for new description
-                            final TextArea textArea = new TextArea();
+                            TextArea textArea = new TextArea();
                             textArea.setPrefWidth(DESCRIPTION_FIELD_WIDTH);
 
                             // Fill with current value and prep for editing
                             textArea.setText(cell.getText());
                             textArea.selectAll();
 
-                            // Update data and table on press
+                            // Update tasks and table on press
                             acceptButton.setOnAction((ActionEvent acceptEvent) -> {
                                 String newDescription = textArea.getText();
 
                                 // Update
-                                data.get(cell.getIndex()).setDescription(newDescription);
+                                tasks.get(cell.getIndex()).setDescription(newDescription);
                                 cell.setText(newDescription);
 
-                                inputStage.hide();
+                                stage.hide();
                             });
 
                             inputVBox.getChildren().addAll(label, textArea);
                         } else if (columnName.equals(DUE_DATE_HEADER)) {
                             // Edit due date
-                            final Label label = new Label(DUE_DATE_HEADER);
-                            label.setFont(HEADER_FONT);
+                            label.setText(DUE_DATE_HEADER);
 
                             // Input for new due date
-                            final DatePicker datePicker = new DatePicker();
+                            DatePicker datePicker = new DatePicker();
                             DueDateConverter converter = new DueDateConverter();
                             datePicker.setConverter(converter);
 
                             // Load the cell value into the picker
                             datePicker.setValue(converter.fromString(cell.getText()));
 
-                            // Update data and table on press
+                            // Update tasks and table on press
                             acceptButton.setOnAction((ActionEvent acceptEvent) -> {
-                                if (converter.getStatus() == DueDateConverter.STATUS.SUCCESS) {
+                                if (converter.parseFailed) {
+                                    displayError(stage, DUE_DATE_ERROR_MESSAGE);
+
+                                    datePicker.requestFocus();
+                                } else {
                                     LocalDate newDueDate = datePicker.getValue();
 
                                     // Update
-                                    data.get(cell.getIndex()).setDueDate(newDueDate);
+                                    tasks.get(cell.getIndex()).setDueDate(newDueDate);
                                     cell.setText(converter.toString(newDueDate));
 
-                                    inputStage.hide();
-                                } else {
-                                    displayError(inputStage, DUE_DATE_ERROR_MESSAGE);
-
-                                    datePicker.requestFocus();
+                                    stage.hide();
                                 }
                             });
 
@@ -573,7 +624,7 @@ public class TaskManager extends Application {
                         // A way to back out for the user
                         Button cancelButton = new Button("Cancel");
                         cancelButton.setOnAction((ActionEvent cancelEvent) -> {
-                            inputStage.hide();
+                            stage.hide();
                         });
 
                         // Button row, "Accept" next to "Cancel"
@@ -585,9 +636,9 @@ public class TaskManager extends Application {
 
                         // Container enabling user interactions
                         Scene inputScene = new Scene(vBox);
-                        inputStage.setScene(inputScene);
+                        stage.setScene(inputScene);
 
-                        inputStage.show();
+                        stage.show();
                     }
                 }
             });
@@ -618,21 +669,15 @@ public class TaskManager extends Application {
         /**
          * Represents the result of the most recent conversion.
          * <p>
-         * Unknown when no conversions have occured.
+         * false when no conversions have occured.
          */
-        public enum STATUS {
-            SUCCESS,
-            FAIL,
-            UNKNOWN;
-        }
-
-        private STATUS status = STATUS.UNKNOWN;
+        public boolean parseFailed = false;
 
         /**
          * Converts the provided {@code String} to {@code LocalDate} and returns it.
          * <p>
-         * {@code DateTimeParseException} is not thrown and null is returned instead but
-         * calls to {@code #getStatus()} return STATUS.FAIL.
+         * {@code DateTimeParseException} is not thrown but null is returned instead and
+         * parseFailed is set to true.
          * 
          * @see DueDateConverter#PATTERN
          */
@@ -640,24 +685,25 @@ public class TaskManager extends Application {
         public LocalDate fromString(String formattedString) {
             if (formattedString.isBlank()) {
                 // Exceptions are slow, handle common blank case.
-                status = STATUS.SUCCESS; // No date selection allowed!
+                parseFailed = false; // No date selection allowed!
                 return null;
             }
 
             // Attempt conversion, exceptions set status to STATUS.FAIL.
             try {
                 LocalDate dueDate = LocalDate.from(FORMATTER.parse(formattedString));
-                status = STATUS.SUCCESS;
+                parseFailed = false;
                 return dueDate;
             } catch (DateTimeParseException parseException) {
-                status = STATUS.FAIL;
+                parseFailed = true;
                 return null;
             }
         }
 
         /**
          * Converts provided {@code LocalDate} into its {@code String} form. 
-         * 
+         * <p>
+         * null (or no) due dates return an empty {@code String}.
          * @see DueDateConverter#PATTERN
          */
         @Override
@@ -666,10 +712,6 @@ public class TaskManager extends Application {
                 return ""; // Handle common case of date unset.
             }
             return FORMATTER.format(dueDate);
-        }
-
-        public STATUS getStatus() {
-            return status;
         }
     }
 }
